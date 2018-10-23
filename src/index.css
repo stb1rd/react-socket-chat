@@ -1,14 +1,186 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+.wrapper {
+	display: flex;
+	height: 100vh;
+	width: 100vw;
+}
+
+.side-panel {
+	border-right: 1px solid #ddd;
+	max-width: 30%;
+}
+
+.main-panel {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.user-list {
+	padding: 10px;
+	padding-top: 5px;
+	display: flex;
+	flex-direction: column;
+	max-height: 100%;
+	overflow: auto;
+  box-sizing: border-box;
+	white-space: nowrap;
+}
+
+.user-list > * {
+	margin-top: 5px;
+	flex-shrink: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.user-item {
+	display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  word-break: break-word;
+}
+
+.user-item span {
+	font-size: 12px;
+	margin-right: 5px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.user-item span.fz-10 {
+	font-size: 10px;
+}
+
+.user-item span.mr-0 {
+	margin-right: 0px;
+}
+
+.user-item button {
+	flex-shrink: 0;
+}
+
+.msg-list {
+  padding: 10px;
+  padding-top: 0px;
+  overflow: auto;
+  box-sizing: border-box;
+  max-height: 100%;
+  margin-top: auto;
+}
+
+.msg-list > * {
+	margin-top: 10px;
+	flex-shrink: 0;
+}
+
+.bubble {
+	color: #fff;
+	font-family: arial;
+	font-size: 12px;
+	background: #3391e9;
+	line-height: 1.2em;
+	padding: 5px 10px;
+	display: inline-block;
+	border-radius: 12px;
+	margin-top: 4px;
+  word-break: break-word;
+}
+
+.msg-system {
+	text-align: center;
+}
+
+.msg-system .bubble {
+	background: #888;
+}
+
+.msg-left,
+.msg-right {
+	max-width: 60%;
+}
+
+.msg-left {
+	text-align: left;
+}
+
+.msg-right {
+	text-align: right;
+	margin-left: auto;
+}
+
+.msg-right .bubble {
+	background: #eee;
+	color: #333;
+}
+
+.msg-right .user-item {
+	justify-content: flex-end;
+}
+
+.msg-info {
+	font-size: 12px;
+	line-height: 1.3em;
+	color: #888;
+	margin-bottom: 1px;
+}
+
+.form-dark {
+	display: flex;
+	background: #ddd;
+	padding: 5px 10px;
+	align-items: center;
+}
+
+.form-dark span {
+	font-size: 12px;
+	font-family: arial;
+}
+
+.form-dark > * {
+	margin-right: 10px;
+}
+
+.form-dark > *:last-child {
+	margin-right: 0;
+}
+
+.form-dark input[type="text"]{
+	height: 20px;
+	box-sizing: border-box;
+	border: 0;
+	border-radius: 10px;
+	flex-grow: 1;
+	padding: 0 10px;
+	font-family: arial;
+	font-size: 12px;
+}
+
+.flexbox {
+	display: flex;
+}
+
+.ai-c {
+	align-items: center;
+}
+
+.fz-10 {
+	font-size: 10px;
+}
+
+.ff-a {
+	font-family: arial;
+}
+
+.mr-10{
+	margin-right: 10px;
 }
