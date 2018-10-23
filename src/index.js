@@ -8,7 +8,6 @@ const  socket = openSocket('http://localhost:3001');
 class Chat extends React.Component {
 	constructor(props) {
 		super(props);
-
     this.addMsg = this.addMsg.bind(this);
     this.addUser = this.addUser.bind(this);
     this.handleReply = this.handleReply.bind(this);
@@ -25,16 +24,23 @@ class Chat extends React.Component {
 			],
 			users: [],
 			replyTo:[],
-			login: ''
+			login: '',
+			serverConnected: false
 		};
 
-		socket.on ('setClientUserList', (users) => this.setState({
-  		users
-		}));
+		// api start
+
+		socket.on ('setClientUserList', function(users){
+			// обработка получения юзеров с сервера
+			this.setState({
+  			users: users,
+			});
+		}.bind(this));
 
 		socket.on ('setClientMessageList', function(msg){
+			// обработка получения сообщения с сервера
 			var newMessages = this.state.messages;
-			var pArgs = msg.props.attachReply;
+			var pArgs = msg.props.attachReply; // свойства приватности сообщения
 			var privacyHide = false;
 			// скрываем, если приватное, или если адресовано не юзеру
 			if ( pArgs[2] ) { // если есть метка приватности
@@ -44,30 +50,72 @@ class Chat extends React.Component {
 					privacyHide = true;
 				}
 			}
-			// если было системное (0), то не трогаем. Иначе сверяем логин и автора
+			// если было системное (0), то не трогаем.
+			// если сообщение от автора, добавляем в ленту справа. Если не от него - слева
 			var msgType = msg.props.type === 0 ? 0 : this.state.login === msg.props.author ? 2 : 1;
-			// var privacyHide = true;
-			// debugger;
-			// console.log('privacyHide: ' + privacyHide);
-			if ( msg && msg.props && !privacyHide ) {
+			// если сообщение - дубликат для текущего юзера, не добавляем его в ленту
+			var msgIsDuplicate = this.state.login && msg.props.userWithDuplicate === this.state.login;
+			if ( msg && msg.props && !privacyHide && !msgIsDuplicate ) {
 				newMessages = this.state.messages.concat(
 					new ChatMsg({
 						type: msgType,
 						hideInfo: msg.props.hideInfo,
 						author: msg.props.author,
 						body: msg.props.body,
-						userReply: this.handleReply,
-						isReplyWithMsg: true,									// реплай по сообщению, а не по нику
+						userReply: this.handleReply,					// задаем обработчик реплая
+						isReplyWithMsg: true,									// задаем реплай по сообщению, а не по нику
 						attachReply: msg.props.attachReply 		// если сообщение - реплай, цепляем оригинал
 					})
 				);
 			}
-			// debugger;
 			this.setState({
   			messages: newMessages
 			});
 		}.bind(this));
+
+
+		var serverOnlineMsg = "Server online";
+
+		socket.on ('connect', function(users){
+			// обработка подключения клиента к серверу - первый и следующий раз
+			this.setState({
+  			serverConnected: true
+			});
+			// генерируем сообщение для юзера
+			this.addMsg(new ChatMsg({
+				type: 0,
+				body: serverOnlineMsg,
+				local: true,
+				hideInfo: true,
+			}));
+			// если юзер уже был подключен до этого, подключаем его еще раз
+			if ( this.state.login ) {
+				socket.emit('addNewUser', this.state.login);	
+			}
+		}.bind(this));
+
+		socket.on ('disconnect', function(){
+			this.addMsg(new ChatMsg({
+				type: 0,
+				body: "Server disconnected. Messages below will be sent later.",
+				local: true,
+				hideInfo: true,
+			}));
+			this.setState({
+  			serverConnected: false
+			});
+			serverOnlineMsg = "Server online. Messages above are succesfully sent."
+		}.bind(this));
 	}
+
+	addUser(user){
+		this.setState({
+			users:this.state.users.concat(user)
+		});
+		socket.emit('addNewUser', user);
+	}
+
+	// api end
 
 	handleReply(user, body, isPrivate) {
 		this.setState({
@@ -86,31 +134,30 @@ class Chat extends React.Component {
 			author: argMsg.props.author,
 			body: argMsg.props.body,
 			userReply: this.handleReply,
-			isReplyWithMsg: true,					// реплай по сообщению, а не по нику
-			attachReply: replyTo 					// если сообщение - реплай, цепляем оригинал
+			isReplyWithMsg: true,					// задаем реплай по сообщению, а не по нику
+			attachReply: replyTo,					// если сообщение - реплай, цепляем оригинал
+			userWithDuplicate: !this.state.serverConnected ? this.state.login : ''
 		});
 		// создаем новое сообщение, но теперь с хендлером ответа
 		this.setState({
 			replyTo: [],
 		});
-		if ( argMsg.props.local ) {
+		if ( argMsg.props.local || !this.state.serverConnected ) {
+			// сообщение локальное или сервер не доступен - пишем в ленту
 			this.setState({ messages: this.state.messages.concat(newMsg) });
-		} else {
+		}
+		if ( !argMsg.props.local || !this.state.serverConnected ) {
+			// не локальное - отдаем на сервер
+			// или не доступен сервер - ставим в очередь на отправку
 			socket.emit('addNewMsg', newMsg);
 		}
 	}
 
 	userReplyAbort(){
+		// если юзер отменяет реплай, отмечаем это
 		this.setState({
 			replyTo:[] // replyAuthor, replyBody, replyPrivate
 		});
-	}
-
-	addUser(user){
-		this.setState({
-			users:this.state.users.concat(user)
-		});
-		socket.emit('addNewUser', user);
 	}
 
 	setLogin(login) {
@@ -118,8 +165,9 @@ class Chat extends React.Component {
 	}
 
 	render(){
+
 		return(
-			<div className="wrapper">	
+			<div className={"wrapper " + (this.state.login ? '' : 'app-disable')}>	
 				<div className="side-panel">	
 					<ChatUsers
 						userList={this.state.users}
@@ -202,19 +250,22 @@ class ChatInput extends React.Component {
     this.refToCbox = React.createRef();
 	}
 
-  handleReplyAbort(){
-		this.props.userReplyAbort();
-  }
-
   handleTextChange(e) {
     this.setState({ msgText: e.target.value });
   }
 
-	shouldComponentUpdate(){
-		return true;
-	}
+  // обработка чекбокса (ЧБ) "приватное сообщение"
+  handleReplyAbort(){
+  	// изначально или после отмены ЧБ не трогали и значения в нем нет
+  	this.setState({
+			isPrivateSet: false,
+			isPrivateVal: false
+  	});
+		this.props.userReplyAbort();
+  }
 
   handleCboxClick(e) {
+  	// если кликнули, отмечаем, что клик был и отмечаем его результат
 		let cboxVal = this.refToCbox.current.checked;
 		if ( cboxVal ) {
 			this.setState({
@@ -231,9 +282,11 @@ class ChatInput extends React.Component {
   }
 
 	componentDidUpdate(){
+		// после рендера определяем, передана ли приватность от кнопки реплая
 		var isPrivateValFlag = this.props.replyTo && this.props.replyTo[2] ? this.props.replyTo[2] : false;
 		if ( this.refToCbox.current ) {
 			if (  !this.state.isPrivateSet ? this.state.isPrivateVal !== isPrivateValFlag : false ) {
+				// если ЧБ не трогали, то верим переданной приватности
 				this.setState({
 					isPrivateVal: isPrivateValFlag
 				});
@@ -241,6 +294,7 @@ class ChatInput extends React.Component {
 			}
 		}
 	}
+	// конец обработки ЧБ
 
   onSubmit(e) {
   	let inputText = this.state.msgText;
@@ -257,6 +311,7 @@ class ChatInput extends React.Component {
 						local: true
 					}));
 				} else {
+					// уникальный - добавляем его
 					this.setState(state => ({
 						msgText: '',
 						login: inputText
@@ -278,6 +333,7 @@ class ChatInput extends React.Component {
 					type: 2,
 					isPrivate: this.state.isPrivateVal
 				});
+				// не забываем обнулить ЧБ приватности
 				this.setState({
 					msgText: '',
 					isPrivateSet: false,
@@ -289,7 +345,6 @@ class ChatInput extends React.Component {
 	}
 
 	render(){
-		// debugger;
 		return(
 			<form className="form-dark" onSubmit={this.onSubmit}>
 				<input
@@ -328,7 +383,6 @@ class ChatInput extends React.Component {
 }
 
 class ChatMsg extends React.Component {
-	// type, hideInfo, author, body
 	handleReply(name, body, isPrivate){
 		this.props.userReply(name, body, isPrivate);
 	}
